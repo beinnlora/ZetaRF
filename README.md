@@ -83,9 +83,14 @@ To transmit on a different channel, use:
 
 Returns true when data was successfully sent.
 
-The chip automatically goes back to listening when the transmit is done.
+By default, the chip automatically goes back to listening (RX) when the transmit is done, but you can define the post-transmit state of the radio by passing the int8_t argument
+    
+    void sendPacket(const uint8_t *data, int8_t channel)
 
-
+    for the available post-TX conditions, see
+https://www.silabs.com/documents/public/application-notes/EZRadio_REVB1_API.zip  
+TX_COMMANDS-->
+START_TX
 
 ### Receive data
 
