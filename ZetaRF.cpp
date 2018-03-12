@@ -13,20 +13,22 @@
 #include "ZetaRF.h"
 
 #ifdef VARIABLE_LENGTH_ON
-#ifdef ZETARF_FREQUENCY_433MHZ
-    #include "configs/radio_config_vl_crc_pre10_sync4_pay8_433mhz.h"
+    #ifdef ZETARF_FREQUENCY_433MHZ
+        #include "configs/radio_config_vl_crc_pre10_sync4_pay8_433mhz.h"
+    #else
+        #include "configs/radio_config_vl_crc_pre10_sync4_pay8.h"
+    #endif
+    //#warning Using variable length packets
 #else
-    #include "configs/radio_config_vl_crc_pre10_sync4_pay8.h"
-#endif
-
-    #warning Using variable length packets
-#else
-// Fixed size packet
-#ifdef ZETARF_FREQUENCY_433MHZ
-    #include "configs/radio_config_fixed_crc_pre10_sync4_pay8_433mhz.h"
-#else
-    #include "configs/radio_config_fixed_crc_pre10_sync4_pay8.h"
-#endif
+    //Fixed size packet
+    #ifdef ZETARF_FREQUENCY_433MHZ
+    //options for various data rates
+       // #include "configs/radio_config_fixed_crc_pre10_sync4_pay8_433mhz.h"
+       // #include "configs/radio_config_fixed_crc_pre10_sync4_pay8_433mhz_9k6.h"
+        #include "configs/radio_config_fixed_crc_pre10_sync4_pay8_433mhz_4k8.h"
+    #else
+        #include "configs/radio_config_fixed_crc_pre10_sync4_pay8.h"
+    #endif
 #endif
 
 
@@ -101,6 +103,99 @@ bool ZetaRF::begin(uint8_t channel, uint8_t packetLength)
     return true;
 }
 
+bool ZetaRF::fastbegin(uint8_t channel, uint8_t packetLength)
+{
+    m_channelNumber = channel;
+    m_systemError = false;
+
+    if (packetLength > 0)
+        m_packetLength = packetLength;
+
+    SPI.begin();
+
+    pinMode(m_csPin, OUTPUT);
+    pinMode(m_irqPin, INPUT_PULLUP);
+    pinMode(m_sdnPin, OUTPUT);
+
+
+    // Power Up the radio chip
+    powerUp();
+
+
+    int retryCount = 10;
+    // Load radio configuration
+    while (initialize(m_radioConfigurationDataArray) != Success && (retryCount--)) {
+        // Wait and retry
+        delay(10);
+        powerUp();
+    }
+
+    // Read ITs, clear pending ones
+    //readInterruptStatus(0, 0, 0);
+
+
+    // Configure FRR
+    /*setProperties(0x02, // Group ID
+                  4,    // 4 registers to set
+                  0x00, // Start at index 0 (FRR A)
+                  SI4455_PROP_FRR_CTL_A_MODE_FRR_A_MODE_ENUM_CURRENT_STATE,
+                  SI4455_PROP_FRR_CTL_B_MODE_FRR_B_MODE_ENUM_INT_PH_PEND,
+                  SI4455_PROP_FRR_CTL_C_MODE_FRR_C_MODE_ENUM_INT_MODEM_PEND,
+                  SI4455_PROP_FRR_CTL_D_MODE_FRR_D_MODE_ENUM_INT_CHIP_PEND);
+
+    */
+	if (!retryCount) return false;
+	
+	
+    return true;
+}
+
+bool ZetaRF::superfastbegin(uint8_t channel, uint8_t packetLength)
+{
+    m_channelNumber = channel;
+    m_systemError = false;
+
+    if (packetLength > 0)
+        m_packetLength = packetLength;
+
+    SPI.begin();
+
+    pinMode(m_csPin, OUTPUT);
+    pinMode(m_irqPin, INPUT_PULLUP);
+    pinMode(m_sdnPin, OUTPUT);
+
+
+    // Power Up the radio chip
+    fastPowerUp();
+
+
+    int retryCount = 10;
+    // Load radio configuration
+    while (initialize(m_radioConfigurationDataArray) != Success && (retryCount--)) {
+        // Wait and retry
+        delay(10);
+        fastPowerUp();
+    }
+
+    // Read ITs, clear pending ones
+    //readInterruptStatus(0, 0, 0);
+
+
+    // Configure FRR
+    /*setProperties(0x02, // Group ID
+                  4,    // 4 registers to set
+                  0x00, // Start at index 0 (FRR A)
+                  SI4455_PROP_FRR_CTL_A_MODE_FRR_A_MODE_ENUM_CURRENT_STATE,
+                  SI4455_PROP_FRR_CTL_B_MODE_FRR_B_MODE_ENUM_INT_PH_PEND,
+                  SI4455_PROP_FRR_CTL_C_MODE_FRR_C_MODE_ENUM_INT_MODEM_PEND,
+                  SI4455_PROP_FRR_CTL_D_MODE_FRR_D_MODE_ENUM_INT_CHIP_PEND);
+
+    */
+	if (!retryCount) return false;
+	
+	
+    return true;
+}
 /*!
  * Set the new channel to use for send and receive.
  * You need to call startListening() for the new channel to take effect on receive mode.
@@ -137,10 +232,11 @@ ZetaRF::DeviceState ZetaRF::deviceState()
  * Do not use it with variable length packets activated, but sendPacket(data, length) instead.
  *
  * @param data Pointer to data to send.
+ * @param condition Hex value of condition processor should return to after TX
  */
-void ZetaRF::sendPacket(const uint8_t *data)
+void ZetaRF::sendPacket(const uint8_t *data,int8_t condition)
 {
-    sendPacket(m_channelNumber, data, m_packetLength);
+    sendPacket(m_channelNumber, data, m_packetLength,condition);
 }
 
 /*!
@@ -148,10 +244,11 @@ void ZetaRF::sendPacket(const uint8_t *data)
  *
  * @param data Pointer to data to send. When using variable length packets, first byte should be the payload length.
  * @param length Data length. Includes payload length byte when using variable length packets.
+ * @param condition Hex value of condition processor should return to after TX
  */
-void ZetaRF::sendPacket(const uint8_t *data, uint8_t length)
+void ZetaRF::sendPacket(const uint8_t *data, uint8_t length,int8_t condition)
 {
-    sendPacket(m_channelNumber, data, length);
+    sendPacket(m_channelNumber, data, length,condition);
 }
 
 /*!
@@ -160,10 +257,11 @@ void ZetaRF::sendPacket(const uint8_t *data, uint8_t length)
  *
  * @param channel Channel to send data to.
  * @param data Pointer to data to send.
+ * @param condition Hex value of condition processor should return to after TX
  */
-void ZetaRF::sendPacket(uint8_t channel, const uint8_t *data)
+void ZetaRF::sendPacket(uint8_t channel, const uint8_t *data,int8_t condition)
 {
-    sendPacket(channel, data, m_packetLength);
+    sendPacket(channel, data, m_packetLength,condition);
 }
 
 /*!
@@ -172,8 +270,9 @@ void ZetaRF::sendPacket(uint8_t channel, const uint8_t *data)
  * @param channel Channel to send data to.
  * @param data Pointer to data to send. When using variable length packets, first byte should be the payload length.
  * @param length Data length. Includes payload length byte when using variable length packets.
+ * @param condition Hex value of condition processor should return to after TX
  */
-void ZetaRF::sendPacket(uint8_t channel, const uint8_t *data, uint8_t length)
+void ZetaRF::sendPacket(uint8_t channel, const uint8_t *data, uint8_t length,uint8_t condition)
 {
     if (!data || length == 0) return;
     // Read ITs, clear pending ones
@@ -193,9 +292,12 @@ void ZetaRF::sendPacket(uint8_t channel, const uint8_t *data, uint8_t length)
     // Fill the TX fifo with data
     writeTxFifo(data, length);
 
-    // Start sending packet on channel, return to RX after transmit
-    startTx(channel, 0x80, length);
+    // Start sending packet on channel, return to condition after TX finished  (0x80=RX default, 0x30=SLEEP)
+    startTx(channel, condition, length);
 }
+
+
+
 
 
 /*!
@@ -416,6 +518,15 @@ void ZetaRF::powerUp()
   // Wait until reset timeout or Reset IT signal
   //for (unsigned int wDelay = 0; wDelay < RadioConfiguration.Radio_Delay_Cnt_After_Reset; wDelay++);
   delay(100);
+}
+void ZetaRF::fastPowerUp()
+{
+  // Hardware reset the chip
+  reset();
+
+  // Wait until reset timeout or Reset IT signal
+  //for (unsigned int wDelay = 0; wDelay < RadioConfiguration.Radio_Delay_Cnt_After_Reset; wDelay++);
+  delay(10);
 }
 
 /*!

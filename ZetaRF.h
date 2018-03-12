@@ -70,16 +70,25 @@ public:
     ZetaRF(int csPin, int shutdownPin, int irqPin);
 
     bool begin(uint8_t channel = 0, uint8_t packetLength = 0 /* 0 = default packet length defined by ZETARF_PACKET_LENGTH*/);
+	bool fastbegin(uint8_t channel = 0, uint8_t packetLength = 0 /* 0 = default packet length defined by ZETARF_PACKET_LENGTH*/);
+    bool superfastbegin(uint8_t channel = 0, uint8_t packetLength = 0 /* 0 = default packet length defined by ZETARF_PACKET_LENGTH*/);
 
     void setChannel(uint8_t channel);
     uint8_t currentChannel();
 
     DeviceState deviceState();
+    
+    /* beinnlora - default to RX condition after send
+    0x80 = RX
+    0x30 = SLEEP 
+    */
+    
+    void sendPacket(const uint8_t *data,int8_t condition = 0x80);
+    void sendPacket(const uint8_t *data,int8_t condition = 0x80);
+    void sendPacket(const uint8_t *data, uint8_t length, int8_t condition = 0x80);
+    void sendPacket(uint8_t channel, const uint8_t *data, int8_t condition = 0x80);
+    void sendPacket(uint8_t channel, const uint8_t *data, uint8_t length,int8_t condition = 0x80);
 
-    void sendPacket(const uint8_t *data);
-    void sendPacket(const uint8_t *data, uint8_t length);
-    void sendPacket(uint8_t channel, const uint8_t *data);
-    void sendPacket(uint8_t channel, const uint8_t *data, uint8_t length);
 
     void startListening();
     void startListening(uint8_t channel);
@@ -117,7 +126,7 @@ private:
     typedef si4455_cmd_reply_union CommandReply;
 
     void powerUp();
-
+    void fastPowerUp();
     void reset();
     CommandResult initialize(const uint8_t* configArray);
 
